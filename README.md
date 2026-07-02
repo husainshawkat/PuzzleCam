@@ -1,102 +1,125 @@
-# Puzzle Cam + Supabase
+# PuzzleCam — Gesture Capture
 
-A hand-tracking photobooth (MediaPipe) that assembles a live jigsaw
-puzzle. When it's solved and the user closes their fist, the photo is
-saved to the local strip **and automatically uploaded to Supabase**,
-where it shows up in an admin panel with login.
+App de fotomatón controlada por gestos manuales que corre completamente en el navegador. Sin instalación, sin backend, sin dependencias que instalar.
 
-## Project structure
+---
 
-```
-puzzlecam/
-├── index.html              # camera app (for the kiosk/photobooth)
-├── admin.html               # admin panel (login + gallery)
-├── css/
-│   ├── styles.css            # camera app styles
-│   └── admin.css             # admin panel styles
-├── js/
-│   ├── app.js                 # camera logic + upload to Supabase
-│   ├── admin.js                # admin panel logic
-│   ├── supabaseClient.js       # shared Supabase client
-│   └── supabase-config.js      # ← YOUR KEYS GO HERE
-└── supabase/
-    └── schema.sql             # SQL to create the table + bucket + policies
-```
+## **DESCRIPCIÓN**
 
-## 1. Create the Supabase project
+PuzzleCam captura una foto usando las manos como "marco", la convierte en un rompecabezas 3x3 con efecto fotográfico en blanco y negro, y permite armarlo usando gestos de pinch. Al completarlo, se guarda en una tira de fotos descargable.
 
-1. Go to [supabase.com](https://supabase.com) and create a new project.
-2. Go to **SQL Editor** → *New query*, paste the full contents of
-   `supabase/schema.sql` and run it. This creates:
-   - the `public.captures` table (with RLS enabled),
-   - the `puzzle-photos` Storage bucket (public for reading),
-   - the policies needed so the camera can upload photos
-     without a session, and only the authenticated admin can read/delete them.
+---
 
-## 2. Create the admin account
+## **REQUISITOS DEL SISTEMA**
 
-1. Go to **Authentication → Users → Add user**.
-2. Create a user with an email and password (this will be the account you
-   use to log in to `admin.html`).
-3. No extra roles table is needed: any authenticated user
-   on this project can view and delete captures, because
-   that's how the `authenticated` policy is defined in `schema.sql`.
-   If you'll have multiple admins, create one user per person from
-   the same screen.
+- **Navegador:** Chrome o Edge (recomendado), Firefox
+- **Hardware:** Cámara web
+- **Conexión a internet:** Requerida para cargar el modelo de MediaPipe (~10MB, solo la primera vez)
+- **Servidor local:** Requerido para ejecutar la app (no se puede abrir como archivo directamente)
 
-## 3. Connect the frontend
+---
 
-Open `js/supabase-config.js` and replace the placeholder values with
-your project's own (**Project Settings → API**):
+## **INSTALACIÓN Y CONFIGURACIÓN**
 
-```js
-export const SUPABASE_URL = "https://your-project.supabase.co";
-export const SUPABASE_ANON_KEY = "your-public-anon-key";
-```
-
-> The `anon` key is public by design (it's used in the browser). The
-> actual security comes from the RLS policies in step 1, not this key.
-
-## 4. Run it
-
-Serve the folder with any static server (it can't be opened with
-`file://` because it uses ES modules and the camera requires HTTPS or
-`localhost`). For example:
+### 1. Clonar el repositorio
 
 ```bash
-npx serve .
-# or
-python3 -m http.server 8080
+git clone https://github.com/mishu006/Puzzle.git
+cd Puzzle
 ```
 
-- Camera / kiosk: `http://localhost:PORT/index.html`
-- Admin panel: `http://localhost:PORT/admin.html`
+### 2. Levantar un servidor local
 
-For production, upload the folder as-is to any static host
-(Vercel, Netlify, GitHub Pages, etc.) — no backend of your own is
-needed, everything goes through Supabase.
+La app usa módulos ES y acceso a cámara, por lo que necesita correr sobre HTTP.
 
-## How the sync works
+Instala la extensión [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) en VS Code y haz clic en **Go Live**.
 
-1. In `index.html`, when someone solves the puzzle and closes their
-   fist, `finishShatter()` calls `uploadCaptureToCloud()`.
-2. That function uploads the PNG to the `puzzle-photos` bucket and creates
-   a row in `captures` with the image's public URL.
-3. `admin.html` subscribes to real-time changes on the `captures`
-   table (Supabase Realtime), so new photos appear
-   in the panel without reloading the page.
-4. If there's no connection or Supabase isn't configured, the app keeps
-   working normally: the photo stays in the local strip, it just
-   doesn't sync with the panel (you'll see a warning in the browser
-   console and a brief "no connection to the cloud" badge).
+### 3. Abrir en el navegador
 
-## Security notes
+```
+http://localhost:5500
+```
 
-- The bucket is public **for reading only** (so photos can be shown
-  by URL), not for listing its contents arbitrarily.
-- Anyone with the camera app can *insert* captures (it's a
-  public kiosk), but only an authenticated user can *read the
-  full list* or *delete* — that's why the admin panel requires login.
-- If you want to fully lock down public uploads (for example, to
-  run the camera only at a controlled event), you can remove the
-  `"anon can insert captures"` policy and require login there too.
+Permite el acceso a la cámara cuando el navegador lo solicite.
+
+---
+
+## **ESTRUCTURA DEL PROYECTO**
+
+```
+Puzzle/
+├── index.html        # Punto de entrada de la app
+├── app.js            # Lógica completa (tracking, puzzle, galería)
+├── css/
+│   └── styles.css    # Estilos y layout
+└── .gitignore
+```
+
+---
+
+## **GESTOS DE CONTROL**
+
+| Gesto | Acción |
+|---|---|
+| Ambas manos haciendo pinch | Congelar el área y comenzar cuenta regresiva |
+| Una mano haciendo pinch sobre una pieza | Arrastrar la pieza del puzzle |
+| Puño cerrado (mantener) | Guardar puzzle completado / Reiniciar tablero |
+
+---
+
+## **LÓGICA DE LA APLICACIÓN**
+
+1. Muestra ambas manos a la cámara y haz pinch para definir el recuadro de captura
+2. Mantén el pinch durante la cuenta regresiva — la foto se toma automáticamente
+3. La foto se divide en un puzzle 3x3 con filtro de fotomatón en blanco y negro
+4. Reorganiza las piezas con gestos de pinch
+5. Al completarlo, cierra el puño para guardar en la tira con animación de fragmentación
+6. Descarga la tira completa cuando tengas 3 puzzles guardados
+
+---
+
+## **STACK TECNOLÓGICO**
+
+- **[MediaPipe Tasks Vision](https://developers.google.com/mediapipe)** `v0.10.14` — detección de landmarks de la mano
+- **Canvas 2D API** — renderizado, piezas del puzzle, efecto fotomatón
+- **JavaScript (ES Modules)** — sin frameworks
+- **CSS Custom Properties** — theming y layout
+
+Todas las dependencias externas se cargan por CDN. No se requiere ninguna instalación adicional.
+
+---
+
+## **GUIA DE SOLUCION DE PROBLEMAS**
+
+### **La cámara no enciende**
+
+Verifica que ninguna otra aplicación (Teams, Zoom, Discord, etc.) esté usando la cámara en segundo plano.
+
+### **La app no carga el modelo**
+
+Verifica tu conexión a internet. El modelo de MediaPipe (~10MB) se descarga desde `storage.googleapis.com` y el runtime desde `cdn.jsdelivr.net`. Si alguno de esos dominios está bloqueado en tu red, la app no podrá iniciar.
+
+### **La app muestra pantalla negra**
+
+Asegúrate de estar abriendo la app desde un servidor local (HTTP), no directamente como archivo desde el explorador de archivos.
+
+### **El gesto de pinch no se detecta**
+
+Asegúrate de tener buena iluminación y que ambas manos sean visibles para la cámara. Acerca más el índice y el pulgar hasta que el punto amarillo en pantalla se active.
+
+---
+
+## **COMPATIBILIDAD DE NAVEGADORES**
+
+| Navegador | Soporte |
+|---|---|
+| Chrome / Edge | Recomendado |
+| Firefox | Compatible |
+| Safari | Limitado (puede requerir permisos adicionales) |
+| Movil | Limitado (recomendado en escritorio) |
+
+---
+
+## **LICENCIA**
+
+MIT — libre para usar, modificar y compartir.
