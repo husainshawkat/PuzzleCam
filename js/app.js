@@ -53,6 +53,12 @@ const errorBanner = document.getElementById("errorBanner");
 const progressBadge = document.getElementById("progressBadge");
 const progressText = document.getElementById("progressText");
 
+const roundDots = document.querySelectorAll(".round-dot");
+const roundLabel = document.getElementById("roundLabel");
+const roundToast = document.getElementById("roundToast");
+const roundToastTitle = document.getElementById("roundToastTitle");
+const roundToastSub = document.getElementById("roundToastSub");
+
 const galleryStrip = document.getElementById("galleryStrip");
 const galleryEmpty = document.getElementById("galleryEmpty");
 const galleryCount = document.getElementById("galleryCount");
@@ -91,9 +97,28 @@ function addToGallery(snapshotCanvas) {
   renderGalleryThumb(snapshotCanvas, galleryEntries.length);
   galleryCount.textContent = `${galleryEntries.length} / ${STRIP_MAX_PHOTOS}`;
   if (galleryEmpty) galleryEmpty.style.display = "none";
+  updateRoundIndicator();
 
   if (galleryEntries.length >= STRIP_MAX_PHOTOS) {
     showStripComplete();
+  }
+}
+
+function updateRoundIndicator() {
+  if (roundDots && roundDots.length) {
+    roundDots.forEach((dot, i) => {
+      dot.classList.remove("complete", "current");
+      if (i < galleryEntries.length) {
+        dot.classList.add("complete");
+      } else if (i === galleryEntries.length && !isStripFull()) {
+        dot.classList.add("current");
+      }
+    });
+  }
+  if (roundLabel) {
+    roundLabel.textContent = isStripFull()
+      ? "strip complete"
+      : `puzzle ${galleryEntries.length + 1} / ${STRIP_MAX_PHOTOS}`;
   }
 }
 
@@ -154,7 +179,7 @@ function downloadPhotoStrip() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `puzzlecam_tira_${Date.now()}.png`;
+    link.download = `puzzlecam_strip_${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -172,6 +197,8 @@ function resetEverything() {
   }
   hideStripComplete();
   updateStripDownloadAvailability();
+  updateRoundIndicator();
+  if (roundToast) roundToast.classList.remove("visible");
   resetPuzzleOnly();
   statusText.textContent = "everything reset";
 }
@@ -971,7 +998,26 @@ function finishShatter() {
     uploadCaptureToCloud(shatter.pendingCanvas);
     shatter.pendingCanvas = null;
   }
-  resetPuzzleOnly();
+  showRoundTransition();
+}
+
+function showRoundTransition() {
+  appState = "transition";
+  const roundNumber = galleryEntries.length;
+  const full = isStripFull();
+
+  if (roundToast) {
+    roundToastTitle.textContent = `puzzle ${roundNumber} complete!`;
+    roundToastSub.textContent = full
+      ? "strip complete — download or reset to keep going"
+      : `get ready for puzzle ${roundNumber + 1} of ${STRIP_MAX_PHOTOS}…`;
+    roundToast.classList.add("visible");
+  }
+
+  setTimeout(() => {
+    if (roundToast) roundToast.classList.remove("visible");
+    resetPuzzleOnly();
+  }, full ? 1500 : 1700);
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1055,6 +1101,10 @@ function processResults(result) {
   if (appState === "shattering") {
     updateAndDrawShatter();
     statusText.textContent = "saving…";
+    return;
+  }
+
+  if (appState === "transition") {
     return;
   }
 
@@ -1223,7 +1273,7 @@ function showLoaderError(message) {
 function resetLoaderUI() {
   loadingOverlay.classList.remove("hidden");
   loaderText.style.color = "";
-  loaderText.textContent = "cargando modelo HandLandmarker…";
+  loaderText.textContent = "loading HandLandmarker model…";
   loaderRetry.classList.add("hidden");
   errorBanner.style.display = "none";
 }
@@ -1274,6 +1324,8 @@ async function boot() {
 loaderRetry.addEventListener("click", () => {
   boot();
 });
+
+updateRoundIndicator();
 
 if (downloadStripBtn) {
   downloadStripBtn.addEventListener("click", downloadPhotoStrip);
