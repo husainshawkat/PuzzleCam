@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ORISCAN — AI Vision HUD</title>
+<meta name="description" content="Original futuristic AI HUD camera — face mesh, hand tracking, gesture recognition.">
+<meta name="theme-color" content="#05070c">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="crt-overlay"></div>
+
+<!-- ===================== LOADER ===================== -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text mono" id="loader-text">Initializing systems</div>
+  <div class="loader-bar"><div class="loader-bar-fill" id="loader-bar-fill"></div></div>
+</div>
+
+<!-- ===================== LANDING ===================== -->
+<div id="landing" class="hidden">
+  <canvas class="bg-fx" id="landing-canvas"></canvas>
+  <div class="landing-content">
+    <div class="brand-mark">
+      <div class="brand-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </div>
+      <div class="brand-title">ORISCAN</div>
+      <div class="brand-sub mono">Neural Vision Interface</div>
+    </div>
+    <p class="landing-desc">Real-time facial mesh, hand skeleton and gesture recognition rendered directly in your browser. No footage ever leaves your device unless you choose to save it.</p>
+    <button class="btn primary enter-btn" id="enter-btn">Enter HUD</button>
+    <div class="landing-stats">
+      <div>468<b class="mono-hidden"></b><div>face points</div></div>
+      <div><b>21</b><div>hand points</div></div>
+      <div><b>60</b><div>fps target</div></div>
+      <div><b>5</b><div>gestures</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP / CAMERA ===================== -->
+<div id="app">
+  <canvas id="three-bg"></canvas>
+
+  <div class="camera-stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div class="hud-rings"><div class="ring ring1"></div><div class="ring ring2"></div></div>
+    <div class="scan-sweep" id="scan-sweep"></div>
+    <div class="vignette"></div>
+  </div>
+
+  <!-- permission gate -->
+  <div id="permission-gate">
+    <div class="gate-box glass">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="7" width="14" height="12" rx="2"/><path d="M17 10l4-2v10l-4-2"/></svg>
+      <div class="brand-sub mono">Camera Access Required</div>
+      <p>Grant camera access to activate the tracking systems. Video is processed locally in your browser.</p>
+      <button class="btn primary" id="grant-btn">Activate Camera</button>
+      <div class="error-text mono" id="gate-error"></div>
+    </div>
+  </div>
+
+  <!-- top bar -->
+  <div class="hud-top">
+    <button class="hud-corner-btn glass" id="back-btn" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div style="display:flex;gap:8px;">
+      <div class="hud-chip glass" id="status-chip"><span class="dot"></span><span id="status-text">SCANNING</span></div>
+      <div class="hud-chip glass rec-chip hidden" id="rec-chip"><span class="dot"></span><span id="rec-time">00:00</span></div>
+    </div>
+    <button class="hud-corner-btn glass" id="fullscreen-btn" aria-label="Fullscreen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg>
+    </button>
+  </div>
+
+  <!-- left telemetry -->
+  <div class="hud-side">
+    <div class="glass">
+      <div class="telemetry-title">Tracking</div>
+      <div class="telemetry-row"><span>Face</span><b id="tel-face">--</b></div>
+      <div class="telemetry-row"><span>Hands</span><b id="tel-hands">--</b></div>
+      <div class="telemetry-row"><span>Confidence</span><b id="tel-conf">--</b></div>
+      <div class="bar-track"><div class="bar-fill" id="tel-conf-bar"></div></div>
+    </div>
+    <div class="glass">
+      <div class="telemetry-title">Head Pose</div>
+      <div class="telemetry-row"><span>Yaw</span><b id="tel-yaw">0.0°</b></div>
+      <div class="telemetry-row"><span>Pitch</span><b id="tel-pitch">0.0°</b></div>
+      <div class="telemetry-row"><span>Roll</span><b id="tel-roll">0.0°</b></div>
+    </div>
+    <div class="glass">
+      <div class="telemetry-title">System</div>
+      <div class="telemetry-row"><span>FPS</span><b id="tel-fps">0</b></div>
+      <div class="telemetry-row"><span>Res</span><b id="tel-res">--</b></div>
+    </div>
+  </div>
+
+  <!-- right gesture readout -->
+  <div class="hud-gesture">
+    <div class="glass">
+      <div class="telemetry-title">Gesture</div>
+      <div class="gesture-name" id="gesture-name">—</div>
+      <div class="gesture-list mono">
+        <span id="g-pinch">Pinch</span>
+        <span id="g-thumb">Thumbs Up</span>
+        <span id="g-peace">Peace</span>
+        <span id="g-palm">Open Palm</span>
+        <span id="g-fist">Closed Fist</span>
+      </div>
+    </div>
+    <div class="glass" style="margin-top:8px;">
+      <div class="telemetry-title">Eye Track</div>
+      <div class="telemetry-row"><span>Gaze X</span><b id="tel-gazex">0.00</b></div>
+      <div class="telemetry-row"><span>Gaze Y</span><b id="tel-gazey">0.00</b></div>
+    </div>
+  </div>
+
+  <!-- bottom dock -->
+  <div class="hud-bottom">
+    <div class="mode-switch" id="mode-switch">
+      <button class="active" data-mode="photo">Photo</button>
+      <button data-mode="video">Video</button>
+    </div>
+    <div class="dock-row">
+      <button class="dock-side-btn glass" id="switch-cam-btn" aria-label="Switch camera">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 01-4 4H3"/></svg>
+      </button>
+      <button class="shutter" id="shutter-btn" aria-label="Capture"></button>
+      <div class="thumb-preview glass" id="thumb-preview"></div>
+    </div>
+  </div>
+</div>
+
+<!-- capture preview modal -->
+<div class="preview-modal hidden" id="preview-modal">
+  <div id="preview-media-wrap"></div>
+  <div class="preview-actions">
+    <button class="btn primary" id="preview-download">Download</button>
+    <button class="btn" id="preview-save">Save to Cloud</button>
+    <button class="btn danger" id="preview-close">Discard</button>
+  </div>
+</div>
+
+<div id="toast" class="glass"></div>
+
+<canvas id="capture-canvas" class="hidden"></canvas>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+  }
+}
+</script>
+<script type="module" src="script.js"></script>
+</body>
+</html>
