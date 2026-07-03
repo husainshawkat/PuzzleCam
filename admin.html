@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORISCAN — Admin Console</title>
+<meta name="theme-color" content="#05070c">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<style>body.admin-body{overflow:auto;}</style>
+</head>
+<body class="admin-body">
+
+<!-- LOGIN -->
+<div class="admin-login-wrap" id="login-view">
+  <div class="admin-login-card glass">
+    <h1>Admin Console</h1>
+    <p class="mono" style="color:var(--text-dim);font-size:12px;">Authenticate to access upload management.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="error-text mono" id="login-error"></div>
+      <button class="btn primary" type="submit" id="login-btn">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="admin-shell hidden" id="dashboard-view">
+  <div class="admin-header">
+    <h1>ORISCAN // Admin</h1>
+    <button class="btn" id="logout-btn">Logout</button>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card glass"><span class="label">Total Images</span><span class="value" id="stat-images">0</span></div>
+    <div class="stat-card glass"><span class="label">Total Videos</span><span class="value" id="stat-videos">0</span></div>
+    <div class="stat-card glass"><span class="label">Total Files</span><span class="value" id="stat-total">0</span></div>
+    <div class="stat-card glass"><span class="label">Storage Used</span><span class="value" id="stat-storage">0 MB</span></div>
+  </div>
+
+  <div class="toolbar glass" style="padding:10px;">
+    <input type="text" id="search-input" placeholder="Search by filename…">
+    <button class="btn" id="search-btn">Search</button>
+    <button class="btn" id="refresh-btn">Refresh</button>
+  </div>
+
+  <div class="glass table-wrap">
+    <table>
+      <thead>
+        <tr><th>Preview</th><th>File</th><th>Type</th><th>Size</th><th>User</th><th>Uploaded</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="uploads-tbody"></tbody>
+    </table>
+    <div class="empty-state hidden" id="empty-state">No uploads found.</div>
+  </div>
+
+  <div class="pagination">
+    <button id="prev-page">‹ Prev</button>
+    <span id="page-label" class="mono">Page 1</span>
+    <button id="next-page">Next ›</button>
+  </div>
+</div>
+
+<div id="toast" class="glass"></div>
+
+<!-- media preview modal -->
+<div class="preview-modal hidden" id="preview-modal">
+  <div id="preview-media-wrap"></div>
+  <div class="preview-actions">
+    <a class="btn primary" id="modal-download" download target="_blank">Download</a>
+    <button class="btn danger" id="modal-close">Close</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script type="module" src="admin.js"></script>
+</body>
+</html>
